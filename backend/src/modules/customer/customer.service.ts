@@ -1,8 +1,10 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 import { PrismaService } from '../../config/prisma/prisma.service';
@@ -11,6 +13,8 @@ import { UpdateCustomerDto } from './dto/update-customer.dto';
 
 @Injectable()
 export class CustomerService {
+  private readonly logger = new Logger(CustomerService.name);
+
   constructor(private prisma: PrismaService) {}
 
   // Register Customer
@@ -25,10 +29,9 @@ export class CustomerService {
       throw new ConflictException('Email already exists');
     }
 
-    // Hash Password
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
-    return this.prisma.customer.create({
+    const customer = await this.prisma.customer.create({
       data: {
         ...dto,
         password: hashedPassword,
@@ -45,6 +48,10 @@ export class CustomerService {
         updatedAt: true,
       },
     });
+
+    this.logger.log(`Customer ${customer.id} registered`);
+
+    return customer;
   }
 
   // Get All Customers
@@ -90,7 +97,10 @@ export class CustomerService {
     return customer;
   }
 
-  // Update Customer
+  async findProfile(id: number) {
+    return this.findOne(id);
+  }
+
   async update(id: number, dto: UpdateCustomerDto) {
     const existingCustomer = await this.prisma.customer.findUnique({
       where: {
@@ -102,14 +112,13 @@ export class CustomerService {
       throw new NotFoundException('Customer not found');
     }
 
-    const data: any = { ...dto };
+    const data: Prisma.CustomerUpdateInput = { ...dto };
 
-    // If password is being updated, hash it
     if (dto.password) {
       data.password = await bcrypt.hash(dto.password, 10);
     }
 
-    return this.prisma.customer.update({
+    const customer = await this.prisma.customer.update({
       where: {
         id,
       },
@@ -126,6 +135,10 @@ export class CustomerService {
         updatedAt: true,
       },
     });
+
+    this.logger.log(`Customer ${customer.id} updated`);
+
+    return customer;
   }
 
   // Delete Customer
@@ -140,7 +153,7 @@ export class CustomerService {
       throw new NotFoundException('Customer not found');
     }
 
-    return this.prisma.customer.delete({
+    const deletedCustomer = await this.prisma.customer.delete({
       where: {
         id,
       },
@@ -151,5 +164,9 @@ export class CustomerService {
         email: true,
       },
     });
+
+    this.logger.log(`Customer ${deletedCustomer.id} deleted`);
+
+    return deletedCustomer;
   }
 }

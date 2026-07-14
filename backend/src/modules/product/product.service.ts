@@ -1,16 +1,22 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../config/prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 
 @Injectable()
 export class ProductService {
+  private readonly logger = new Logger(ProductService.name);
+
   constructor(private prisma: PrismaService) {}
 
-  create(createProductDto: CreateProductDto) {
-    return this.prisma.product.create({
+  async create(createProductDto: CreateProductDto) {
+    const product = await this.prisma.product.create({
       data: createProductDto,
     });
+
+    this.logger.log(`Product ${product.id} created`);
+
+    return product;
   }
 
   findAll() {
@@ -39,18 +45,26 @@ export class ProductService {
   async update(id: number, dto: UpdateProductDto) {
     await this.findOne(id);
 
-    return this.prisma.product.update({
+    const product = await this.prisma.product.update({
       where: { id },
       data: dto,
     });
+
+    this.logger.log(`Product ${product.id} updated`);
+
+    return product;
   }
 
   async remove(id: number) {
     await this.findOne(id);
 
-    return this.prisma.product.delete({
+    const product = await this.prisma.product.delete({
       where: { id },
     });
+
+    this.logger.log(`Product ${product.id} deleted`);
+
+    return product;
   }
 
   productsByCategory(categoryId: number) {
